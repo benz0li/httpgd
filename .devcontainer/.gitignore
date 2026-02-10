@@ -12,15 +12,22 @@
 !/scripts/usr/
 !/scripts/usr/local/
 !/scripts/usr/local/bin/
+!/vsix/
+!/vsix/var/
+!/vsix/var/tmp/
+!/vsix/var/tmp/extensions/
 
 !/conf/shell/etc/skel/.profile
 !/conf/shell/var/tmp/snippets/*.sh
 !/debian-*/devcontainer.json
 !/scripts/usr/local/bin/*.sh
+!/vsix/var/tmp/extensions/*.vsix
 
 !/.gitignore
 !/devcontainer.json
 !/Debian.Dockerfile
+!/init
+!/init.cmd
 !/R.Dockerfile
 !/LICENSE
 !/README.md

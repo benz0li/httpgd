@@ -13,5 +13,6 @@ For use with Github Codespaces: <a href='https://codespaces.new/nx10/httpgd?hide
 
 ## License
 
-The code in this directory is not part of httpgd (the software) and is
-distributed under the terms of the [MIT License](LICENSE).
+The code in this directory is not part of httpgd (the software) and, with the
+exceptions noted in [LICENSE](LICENSE), is distributed under the terms of the
+MIT License.

@@ -2,14 +2,17 @@ ARG BASE_IMAGE=debian
 ARG BASE_IMAGE_TAG=latest
 ARG R_VERSION=latest
 
-FROM docker.io/koalaman/shellcheck:stable as sci
+FROM ghcr.io/hadolint/hadolint:latest AS hsi
 
-FROM ${BASE_IMAGE}:${BASE_IMAGE_TAG} as files
+FROM docker.io/koalaman/shellcheck:stable AS sci
+
+FROM ${BASE_IMAGE}:${BASE_IMAGE_TAG} AS files
 
 RUN mkdir /files
 
 COPY conf/shell /files
 COPY scripts /files
+COPY vsix /files
 
   ## Ensure file modes are correct
 RUN find /files -type d -exec chmod 755 {} \; \
@@ -20,7 +23,7 @@ RUN find /files -type d -exec chmod 755 {} \; \
   && chmod 700 /files/root
 
 # Build R according to https://github.com/b-data/rsi
-FROM ${BASE_IMAGE}:${BASE_IMAGE_TAG} as rsi
+FROM ${BASE_IMAGE}:${BASE_IMAGE_TAG} AS rsi
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -160,10 +163,11 @@ COPY --from=rsi /usr/local /usr/local
 # hadolint ignore=DL3008
 RUN apt-get update \
   ## Copy script checkbashisms from package devscripts
-  && apt-get install -y --no-install-recommends devscripts \
+  && apt-get download devscripts \
+  && dpkg --force-depends --install devscripts*.deb \
   && cp -a /usr/bin/checkbashisms /usr/local/bin/checkbashisms \
-  && apt-get remove -y --purge devscripts \
-  && apt-get autoremove -y \
+  && dpkg --purge devscripts \
+  && rm devscripts*.deb \
   ## Install R runtime dependencies
   && CXX_STDLIB_VERSION=${CXX_STDLIB:+$COMPILER_VERSION} \
   && apt-get install -y --no-install-recommends \
@@ -177,6 +181,7 @@ RUN apt-get update \
     "${CXX_STDLIB}${CXX_STDLIB:+abi}${CXX_STDLIB_VERSION:+-}${CXX_STDLIB_VERSION}${CXX_STDLIB:+-dev}" \
     libbz2-dev \
     '^libcurl[3|4]$' \
+    libdeflate-dev \
     libicu-dev \
     '^libjpeg.*-turbo.*-dev$' \
     liblapack-dev \
@@ -188,6 +193,7 @@ RUN apt-get update \
     libpng-dev \
     libreadline-dev \
     '^libtiff[5|6]$' \
+    libzstd-dev  \
     pkg-config \
     unzip \
     zip \
@@ -357,18 +363,6 @@ RUN dpkgArch="$(dpkg --print-architecture)" \
   ## Clean up
   && rm -rf /tmp/* \
     /root/.cache \
-  ## Install hadolint
-  && case "$dpkgArch" in \
-    amd64) tarArch="x86_64" ;; \
-    arm64) tarArch="arm64" ;; \
-    *) echo "error: Architecture $dpkgArch unsupported"; exit 1 ;; \
-  esac \
-  && apiResponse="$(curl -sSL \
-    https://api.github.com/repos/hadolint/hadolint/releases/latest)" \
-  && downloadUrl="$(echo "$apiResponse" | grep -e \
-    "browser_download_url.*Linux-$tarArch\"" | cut -d : -f 2,3 | tr -d \")" \
-  && echo "$downloadUrl" | xargs curl -sSLo /usr/local/bin/hadolint \
-  && chmod 755 /usr/local/bin/hadolint \
   ## Create backup of root directory
   && cp -a /root /var/backups \
   ## Clean up
@@ -459,5 +453,8 @@ RUN if [ -n "$USE_ZSH_FOR_ROOT" ]; then \
 ## Copy files as late as possible to avoid cache busting
 COPY --from=files /files /
 
-## Copy shellcheck as late as possible to avoid cache busting
+## Copy binaries as late as possible to avoid cache busting
+## Install Haskell Dockerfile Linter
+COPY --from=hsi /bin/hadolint /usr/local/bin
+## Install ShellCheck
 COPY --from=sci --chown=root:root /bin/shellcheck /usr/local/bin

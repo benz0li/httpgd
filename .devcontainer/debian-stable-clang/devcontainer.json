@@ -16,6 +16,7 @@
     }
   },
 
+  "initializeCommand": [".devcontainer/init"],
   "onCreateCommand": "onCreateCommand.sh",
   "postCreateCommand": "postCreateCommand.sh",
   "postStartCommand": "postStartCommand.sh",
@@ -38,7 +39,7 @@
     "vscode": {
       "extensions": [
         "DavidAnson.vscode-markdownlint",
-        "eamodio.gitlens@11.7.0",
+        "/var/tmp/extensions/eamodio.gitlens-11.7.0.vsix",
         "editorconfig.editorconfig",
         "GitHub.vscode-pull-request-github",
         "grapecity.gc-excelviewer",

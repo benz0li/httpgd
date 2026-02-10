@@ -1,14 +1,17 @@
 ARG BUILD_ON_IMAGE=glcr.b-data.ch/r/tidyverse
 ARG R_VERSION=latest
 
-FROM docker.io/koalaman/shellcheck:stable as sci
+FROM ghcr.io/hadolint/hadolint:latest AS hsi
 
-FROM ${BUILD_ON_IMAGE}:${R_VERSION} as files
+FROM docker.io/koalaman/shellcheck:stable AS sci
+
+FROM ${BUILD_ON_IMAGE}:${R_VERSION} AS files
 
 RUN mkdir /files
 
 COPY conf/shell /files
 COPY scripts /files
+COPY vsix /files
 
   ## Ensure file modes are correct
 RUN find /files -type d -exec chmod 755 {} \; \
@@ -57,18 +60,6 @@ RUN dpkgArch="$(dpkg --print-architecture)" \
   ## Clean up
   && rm -rf /tmp/* \
     /root/.cache \
-  ## Install hadolint
-  && case "$dpkgArch" in \
-    amd64) tarArch="x86_64" ;; \
-    arm64) tarArch="arm64" ;; \
-    *) echo "error: Architecture $dpkgArch unsupported"; exit 1 ;; \
-  esac \
-  && apiResponse="$(curl -sSL \
-    https://api.github.com/repos/hadolint/hadolint/releases/latest)" \
-  && downloadUrl="$(echo "$apiResponse" | grep -e \
-    "browser_download_url.*Linux-$tarArch\"" | cut -d : -f 2,3 | tr -d \")" \
-  && echo "$downloadUrl" | xargs curl -sSLo /usr/local/bin/hadolint \
-  && chmod 755 /usr/local/bin/hadolint \
   ## Create backup of root directory
   && cp -a /root /var/backups \
   ## Clean up
@@ -108,5 +99,8 @@ ENV BUILD_DATE=
 ## Copy files as late as possible to avoid cache busting
 COPY --from=files /files /
 
-## Copy shellcheck as late as possible to avoid cache busting
+## Copy binaries as late as possible to avoid cache busting
+## Install Haskell Dockerfile Linter
+COPY --from=hsi /bin/hadolint /usr/local/bin
+## Install ShellCheck
 COPY --from=sci --chown=root:root /bin/shellcheck /usr/local/bin
